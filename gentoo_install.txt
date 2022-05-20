@@ -1,0 +1,116 @@
+# partition the target drive
+cfdisk /dev/nvme1n1
+
+# partition nvme1n1p1 for EFI system
+# label nvme1n1p1 as EFI at 300M
+# partition nvme1n1p2 for Linux filesystem
+# label nvme1n1p2 as Linux filesystem for rest of space
+
+# create filesystems
+mkfs.vfat -F 32 /dev/nvme1n1p1
+mkfs.ext4 /dev/nvme1n1p2
+
+# mount partitions
+mount /dev/nvme1n1p2 /mnt/gentoo
+
+# set time and time
+date
+ntpd -q -g
+date
+
+#download multilib, openrc tarball
+cd /mnt/gentoo
+
+wget https://bouncer.gentoo.org/fetch/root/all/releases/amd64/autobuilds/20220515T170533Z/stage3-amd64-openrc-20220515T170533Z.tar.xz
+tar --xvf stage3-amd64-openrc-20220515T170533Z.tar.xz
+
+# configure compile options
+nano /mnt/gentoo/etc/portage/make.conf
+
+# copy DNS info
+cp --dereference /etc/resolv.conf /mnt/gentoo/etc/
+
+# mount necessary filesystems
+mount --types proc /proc /mnt/gentoo/proc
+mount --rbind /sys /mnt/gentoo/sys
+mount --make-rslave /mnt/gentoo/sys
+mount --rbind /dev/mnt/gentoo/dev
+mount --make-rslave /mnt/gentoo/dev
+mount --bind /run /mnt/gentoo/run
+mount --make-slave /mnt/gentoo/run
+
+# enter new environment
+
+chroot /mnt/gentoo /bin/bash
+source /etc/profile
+export PS1="(chroot) ${PS1}"
+
+mkdir /usr/portage
+emerge-webrsync
+
+# mount boot partition
+mount /dev/nvme1n1p1 /boot
+
+# install firmware
+emerge sys-kernel/linux-firmware
+
+# install sources
+emerge sys-kernel/gentoo-sources
+eselect kernel list
+eselect kernel set 1
+ls -l /usr/src/linux
+
+# compile kernel
+emerge sys-kernel/genkernel --ask --autounmask
+	# type "yes"
+etc-update
+	# type "-3"
+emerge sys-kernel/genkernel
+
+# create fstab file
+nano /etc/fstab
+blkid
+
+nano /etc/fstab
+	# /dev/nvme1n1p1	/boot	vfat	defaults,noatime	0 2
+	# /dev/nvme1n1p2	/	ext4	noatime			0 1
+
+# configure hosts
+nano /etc/conf.d/hostname
+	# hostname="tux"
+nano /etc/hosts
+	# 127.0.0.1 tux localhost
+hostname tux
+hostname
+hostname -f
+
+# network
+emerge --ask net-misc/dhcpcd
+rc-update add dhcpcd default
+rc-service dhcpcd start
+
+# install tools
+emerge virtual/ssh
+emerge syslog-ng
+emerge cronie
+emerge mlocate
+rc-update add ssh default
+rc-update add syslog-ng default
+rc-update add cronie default
+
+# set logins
+passwd
+useradd -m -G users,wheel,audio,lp,cdrom,portage,cron -s /bin/bash tux
+passwd tux
+
+emerge sudo
+nano  /etc/sudoers
+	# %wheel ALL=(ALL) ALL
+
+# Install boot loader
+
+nano /etc/portage/make.conf
+	# GRUB-PLATFORMS="efi-64"
+emerge --ask sys-boot/grub
+
+grub-install --target=x86_64-efi --efi-directory=/boot/efi --removable
