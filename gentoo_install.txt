@@ -21,8 +21,8 @@ date
 #download multilib, openrc tarball
 cd /mnt/gentoo
 
-wget https://bouncer.gentoo.org/fetch/root/all/releases/amd64/autobuilds/20220515T170533Z/stage3-amd64-openrc-20220515T170533Z.tar.xz
-tar --xvf stage3-amd64-openrc-20220515T170533Z.tar.xz
+wget https://bouncer.gentoo.org/fetch/root/all/releases/amd64/autobuilds/20220515T170533Z/stage3-amd64-openrc-version.tar.xz
+tar --xvf stage3-amd64-openrc-version.tar.xz
 
 # configure compile options
 nano /mnt/gentoo/etc/portage/make.conf
@@ -60,12 +60,15 @@ eselect kernel list
 eselect kernel set 1
 ls -l /usr/src/linux
 
-# compile kernel
-emerge sys-kernel/genkernel --ask --autounmask
-	# type "yes"
-etc-update
-	# type "-3"
+## compile kernel
 emerge sys-kernel/genkernel
+
+## compile kernel. if masked, ignore line 64 and refer to lines 67 through 71 instead
+# emerge sys-kernel/genkernel --ask --autounmask
+	## type "yes"
+# etc-update
+	## type "-3"
+#emerge sys-kernel/genkernel
 
 # create fstab file
 nano /etc/fstab
@@ -74,7 +77,6 @@ blkid
 nano /etc/fstab
 	# /dev/nvme1n1p1	/boot	vfat	defaults,noatime	0 2
 	# /dev/nvme1n1p2	/	ext4	noatime			0 1
-
 # configure hosts
 nano /etc/conf.d/hostname
 	# hostname="tux"
