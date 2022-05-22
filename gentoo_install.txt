@@ -112,6 +112,8 @@ nano  /etc/sudoers
 # Install boot loader
 
 nano /etc/portage/make.conf
+mkdir /boot/efi
+mount /dev/nvme1n1p1 /boot/EFI
 	# GRUB-PLATFORMS="efi-64"
 emerge --ask sys-boot/grub
 
